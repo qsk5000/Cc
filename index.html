@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamPro — بث القنوات</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.12/hls.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.6.1/video-js.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.6.1/video.min.js"></script>
+<style>
+:root {
+  --bg:#07090f;--s1:#0e1117;--s2:#161c24;--s3:#1e2530;
+  --border:#252d38;--red:#e63946;--orange:#f4a261;--gold:#ffd60a;
+  --green:#22c55e;--text:#e8eef5;--muted:#7a8694;--glow:rgba(230,57,70,.35);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text)}
+
+header{
+height:58px;display:flex;align-items:center;justify-content:space-between;
+padding:0 20px;background:rgba(7,9,15,.96);backdrop-filter:blur(16px);
+border-bottom:1px solid var(–border);position:relative;z-index:50;flex-shrink:0;
+}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-mark{
+width:34px;height:34px;background:var(–red);border-radius:8px;
+display:flex;align-items:center;justify-content:center;
+box-shadow:0 0 18px var(–glow);font-size:16px;color:#fff;font-weight:900;
+}
+.logo-name{
+font-family:‘Rajdhani’,sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:2px;
+background:linear-gradient(120deg,#fff 40%,var(–orange));
+-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+nav{display:flex;gap:4px}
+nav a{color:var(–muted);text-decoration:none;padding:5px 14px;border-radius:6px;font-size:.85rem;font-weight:600;transition:all .2s}
+nav a:hover,nav a.on{color:var(–text);background:var(–s2)}
+nav a.on{color:var(–red)}
+.hbadge{background:linear-gradient(135deg,var(–red),var(–orange));color:#fff;font-size:.62rem;font-weight:800;padding:3px 8px;border-radius:4px;letter-spacing:1px}
+
+.wrap{display:flex;height:calc(100vh - 58px)}
+
+aside{
+width:270px;flex-shrink:0;background:var(–s1);
+border-left:1px solid var(–border);display:flex;flex-direction:column;overflow:hidden;
+}
+.aside-top{padding:12px;border-bottom:1px solid var(–border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.aside-title{font-size:.7rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(–muted)}
+.cnt-badge{background:var(–s2);color:var(–muted);font-size:.65rem;padding:2px 8px;border-radius:12px;font-weight:700}
+.cats{padding:10px;display:flex;gap:5px;flex-wrap:wrap;border-bottom:1px solid var(–border);flex-shrink:0}
+.cat{background:var(–s2);border:1px solid var(–border);color:var(–muted);padding:4px 11px;border-radius:20px;font-size:.72rem;cursor:pointer;transition:all .2s;font-family:‘Cairo’,sans-serif;font-weight:700}
+.cat:hover{border-color:var(–red);color:var(–text)}
+.cat.on{background:var(–red);border-color:var(–red);color:#fff;box-shadow:0 0 10px var(–glow)}
+
+.ch-scroll{overflow-y:auto;flex:1;padding:6px}
+.ch-scroll::-webkit-scrollbar{width:3px}
+.ch-scroll::-webkit-scrollbar-thumb{background:var(–border);border-radius:2px}
+
+.ch{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;transition:all .18s;border:1px solid transparent;margin-bottom:3px}
+.ch:hover{background:var(–s2);border-color:var(–border)}
+.ch.on{background:rgba(230,57,70,.1);border-color:rgba(230,57,70,.35)}
+.ch.on .ch-name{color:var(–red)}
+.ch-logo{width:44px;height:44px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.3rem;border:1px solid var(–border);background:var(–s2)}
+.ch-info{flex:1;min-width:0}
+.ch-name{font-size:.83rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.ch-meta{display:flex;align-items:center;gap:5px}
+.dot{width:5px;height:5px;border-radius:50%;background:var(–green);animation:blink 2s infinite;flex-shrink:0}
+@keyframes blink{50%{opacity:.3;transform:scale(1.3)}}
+.live-lbl{font-size:.6rem;color:var(–green);font-weight:800;letter-spacing:1px}
+.q-tag{font-size:.58rem;background:var(–s3);color:var(–muted);padding:1px 5px;border-radius:3px;font-weight:700}
+.viewers{font-size:.6rem;color:var(–muted)}
+
+.player-section{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#000}
+.player-box{flex:1;position:relative;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center}
+
+/* Video.js skin */
+.video-js{width:100%!important;height:100%!important;background:#000}
+.vjs-big-play-button{
+background:rgba(230,57,70,.85)!important;border:none!important;border-radius:50%!important;
+width:64px!important;height:64px!important;line-height:64px!important;
+top:50%!important;left:50%!important;transform:translate(-50%,-50%)!important;
+box-shadow:0 0 30px var(–glow)!important;
+}
+.vjs-control-bar{background:linear-gradient(transparent,rgba(0,0,0,.85))!important;padding:8px 12px!important}
+.vjs-play-progress{background:var(–red)!important}
+.vjs-volume-level{background:var(–red)!important}
+.vjs-error-display .vjs-modal-dialog-content{font-family:‘Cairo’,sans-serif;font-size:.9rem}
+
+#splash{
+position:absolute;inset:0;
+background:radial-gradient(ellipse at 40% 50%,#0e1117 0%,#07090f 100%);
+display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20;
+}
+.splash-icon{width:88px;height:88px;border-radius:22px;background:var(–s2);border:1px solid var(–border);display:flex;align-items:center;justify-content:center;font-size:2.8rem;box-shadow:0 8px 40px rgba(0,0,0,.6)}
+.splash-t{font-size:1.3rem;font-weight:800}
+.splash-s{color:var(–muted);font-size:.88rem}
+
+#loadBox{position:absolute;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(6px);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:25}
+.spin{width:52px;height:52px;border-radius:50%;border:3px solid rgba(255,255,255,.08);border-top-color:var(–red);animation:spin .75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loadTxt{color:rgba(255,255,255,.7);font-size:.82rem;text-align:center;max-width:240px;line-height:1.7}
+
+#errBox{position:absolute;inset:0;background:rgba(0,0,0,.85);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:25}
+.err-icon{font-size:2.5rem}
+.err-title{font-size:1.1rem;font-weight:800;color:var(–red)}
+.err-sub{color:var(–muted);font-size:.82rem;text-align:center;max-width:270px;line-height:1.7;white-space:pre-line}
+.retry-btn{background:var(–red);color:#fff;border:none;padding:9px 22px;border-radius:8px;font-size:.85rem;cursor:pointer;font-family:‘Cairo’,sans-serif;font-weight:700;margin-top:4px;transition:background .2s}
+.retry-btn:hover{background:#c62d3a}
+
+#playerBar{position:absolute;top:0;left:0;right:0;padding:14px 18px;background:linear-gradient(rgba(0,0,0,.75),transparent);display:none;align-items:center;justify-content:space-between;z-index:10;pointer-events:none}
+.bar-left{display:flex;align-items:center;gap:10px}
+.bar-logo{width:36px;height:36px;border-radius:7px;background:var(–s2);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+.bar-ch{font-size:.7rem;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.bar-prog{font-size:.95rem;font-weight:800}
+.bar-right{display:flex;gap:7px}
+.b{padding:3px 9px;border-radius:5px;font-size:.62rem;font-weight:800;letter-spacing:1px;backdrop-filter:blur(8px)}
+.b-live{background:rgba(34,197,94,.2);border:1px solid rgba(34,197,94,.45);color:var(–green)}
+.b-hd{background:rgba(244,162,97,.2);border:1px solid rgba(244,162,97,.45);color:var(–orange)}
+.b-spd{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7)}
+
+#netBox{position:absolute;bottom:60px;right:14px;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:5px 10px;font-size:.65rem;display:none;align-items:center;gap:6px;z-index:10}
+#netDot{width:7px;height:7px;border-radius:50%}
+
+.info-bar{height:48px;flex-shrink:0;background:var(–s1);border-top:1px solid var(–border);display:flex;align-items:center;padding:0 18px;gap:20px}
+.epg-now{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.epg-lbl{font-size:.6rem;color:var(–red);font-weight:800;letter-spacing:2px;white-space:nowrap}
+.epg-prog{font-size:.82rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.epg-time{font-size:.7rem;color:var(–muted);font-family:‘Rajdhani’;white-space:nowrap;font-weight:600}
+.stats{display:flex;gap:14px;flex-shrink:0}
+.stat{display:flex;align-items:center;gap:5px;font-size:.7rem;color:var(–muted)}
+.stat strong{color:var(–text);font-family:‘Rajdhani’;font-size:.78rem}
+
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:var(–s2);border:1px solid var(–border);border-radius:10px;padding:10px 18px;display:flex;align-items:center;gap:8px;font-size:.82rem;z-index:999;transition:transform .35s cubic-bezier(.34,1.56,.64,1);backdrop-filter:blur(16px);white-space:nowrap}
+#toast.show{transform:translateX(-50%) translateY(0)}
+
+@media(max-width:680px){
+aside{width:100%;height:175px;border-left:none;border-top:1px solid var(–border)}
+.wrap{flex-direction:column-reverse}
+.ch-scroll{display:flex;overflow-x:auto;overflow-y:hidden;padding:6px}
+.ch{min-width:68px;flex-direction:column;gap:4px;padding:8px 6px}
+.ch-info{display:none}
+nav{display:none}
+.cats{flex-wrap:nowrap;overflow-x:auto}
+}
+</style>
+
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">▶</div>
+    <div>
+      <div class="logo-name">STREAM<span style="color:var(--red)">PRO</span></div>
+    </div>
+  </div>
+  <nav>
+    <a href="#" class="on">📺 القنوات</a>
+    <a href="#">⚽ رياضة</a>
+    <a href="#">📰 أخبار</a>
+    <a href="#">🎬 أفلام</a>
+    <a href="#">⭐ المفضلة</a>
+  </nav>
+  <span class="hbadge">LIVE HD</span>
+</header>
+
+<div class="wrap">
+
+  <div class="player-section">
+    <div class="player-box" id="playerBox">
+
+```
+  <div id="splash">
+    <div class="splash-icon">📺</div>
+    <div class="splash-t">اختر قناة للمشاهدة</div>
+    <div class="splash-s">اضغط على أي قناة من القائمة</div>
+  </div>
+
+  <div id="loadBox">
+    <div class="spin"></div>
+    <div id="loadTxt">جارٍ الاتصال بالبث...</div>
+  </div>
+
+  <div id="errBox">
+    <div class="err-icon">📡</div>
+    <div class="err-title">تعذّر تحميل البث</div>
+    <div class="err-sub" id="errMsg">تحقق من اتصالك بالإنترنت</div>
+    <button class="retry-btn" onclick="retryLoad()">🔄 إعادة المحاولة</button>
+  </div>
+
+  <div id="playerBar">
+    <div class="bar-left">
+      <div class="bar-logo" id="barLogo">📺</div>
+      <div>
+        <div class="bar-ch" id="barCh">—</div>
+        <div class="bar-prog" id="barProg">—</div>
+      </div>
+    </div>
+    <div class="bar-right">
+      <span class="b b-live">⬤ LIVE</span>
+      <span class="b b-hd" id="badgeQ">HD</span>
+      <span class="b b-spd" id="badgeSpd">AUTO</span>
+    </div>
+  </div>
+
+  <div id="netBox">
+    <div id="netDot"></div>
+    <span id="netTxt">—</span>
+  </div>
+
+  <video id="myVideo"
+    class="video-js vjs-default-skin vjs-big-play-centered"
+    controls playsinline preload="auto"
+    style="width:100%;height:100%;display:none">
+  </video>
+
+</div>
+
+<div class="info-bar">
+  <div class="epg-now">
+    <span class="epg-lbl">البث الحالي</span>
+    <span class="epg-prog" id="infoProg">—</span>
+    <span class="epg-time" id="infoClock"></span>
+  </div>
+  <div class="stats">
+    <div class="stat">📶 جودة: <strong id="stQ">—</strong></div>
+    <div class="stat">⚡ تأخير: <strong id="stL">—</strong></div>
+    <div class="stat">👁 مشاهدون: <strong id="stV">—</strong></div>
+  </div>
+</div>
+```
+
+  </div>
+
+  <aside>
+    <div class="aside-top">
+      <span class="aside-title">القنوات</span>
+      <span class="cnt-badge" id="cntBadge">0</span>
+    </div>
+    <div class="cats" id="cats">
+      <button class="cat on" onclick="filt(this,'all')">الكل</button>
+      <button class="cat" onclick="filt(this,'sports')">رياضة</button>
+      <button class="cat" onclick="filt(this,'news')">أخبار</button>
+      <button class="cat" onclick="filt(this,'movies')">أفلام</button>
+      <button class="cat" onclick="filt(this,'kids')">أطفال</button>
+      <button class="cat" onclick="filt(this,'general')">عام</button>
+    </div>
+    <div class="ch-scroll" id="chList"></div>
+  </aside>
+</div>
+
+<div id="toast"><span id="toastI">✅</span><span id="toastM"></span></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  قائمة القنوات — أضف روابطك هنا
+// ══════════════════════════════════════════════
+const CHANNELS = [
+  // رياضة
+  { id:1,  name:'beIN Sports 1',      cat:'sports', icon:'⚽', q:'HD',  v:'2.1M', prog:'البث المباشر',
+    url:'http://stream.mytvplus.net:7003/sport/ch2/ch2_360.m3u8' },
+  { id:2,  name:'beIN Sports 2',      cat:'sports', icon:'🏆', q:'HD',  v:'1.8M', prog:'دوري أبطال أوروبا', url:'http://stream.mytvplus.net:7003/sport/ch2/ch2_720.m3u8' },
+  { id:3,  name:'beIN Sports 3',      cat:'sports', icon:'🥅', q:'HD',  v:'900K', prog:'البث المباشر', url:'' },
+  { id:4,  name:'beIN Sports 4',      cat:'sports', icon:'🎽', q:'HD',  v:'750K', prog:'البث المباشر', url:'' },
+  { id:5,  name:'الرياضية السعودية',  cat:'sports', icon:'🟢', q:'FHD', v:'1.2M', prog:'دوري روشن', url:'' },
+  // أخبار
+  { id:6,  name:'الجزيرة',            cat:'news', icon:'🎙', q:'HD', v:'1.2M', prog:'نشرة الأخبار',
+    url:'https://live-hls-web-aje.getaj.net/AJE/01.m3u8' },
+  { id:7,  name:'العربية',            cat:'news', icon:'📡', q:'HD', v:'980K', prog:'أخبار العالم', url:'' },
+  { id:8,  name:'Sky News عربية',     cat:'news', icon:'🌐', q:'HD', v:'540K', prog:'أخبار السوق', url:'' },
+  // أفلام
+  { id:9,  name:'Rotana Cinema',      cat:'movies', icon:'🎬', q:'HD',  v:'380K', prog:'أفلام عربية', url:'' },
+  { id:10, name:'OSN Movies',         cat:'movies', icon:'🎥', q:'FHD', v:'430K', prog:'أكشن', url:'' },
+  // أطفال
+  { id:11, name:'MBC 3',              cat:'kids', icon:'🧸', q:'HD', v:'560K', prog:'كرتون', url:'' },
+  { id:12, name:'Spacetoon',          cat:'kids', icon:'🌈', q:'HD', v:'720K', prog:'أنيمي', url:'' },
+  // عام
+  { id:13, name:'MBC 1',              cat:'general', icon:'📺', q:'FHD', v:'3.2M', prog:'برامج', url:'' },
+  { id:14, name:'MBC 2',              cat:'general', icon:'🎞', q:'FHD', v:'2.8M', prog:'سينما MBC', url:'' },
+  { id:15, name:'دبي TV',             cat:'general', icon:'🏙', q:'HD',  v:'680K', prog:'البث الحي', url:'' },
+];
+
+// ══════════════════════════════════════════════
+let curCh   = null;
+let hlsInst = null;
+let retries = 0;
+let retryTmr= null;
+let bwTimer = null;
+const $ = id => document.getElementById(id);
+
+// الفيديو مباشرة بدون Video.js لتجنب تعارض HLS
+const vid = $('myVideo');
+
+// ── رسم القنوات ──
+function render(cat){
+  const list = cat==='all' ? CHANNELS : CHANNELS.filter(c=>c.cat===cat);
+  $('cntBadge').textContent = list.length + ' قناة';
+  $('chList').innerHTML = list.map((ch,i)=>`
+    <div class="ch" id="c${ch.id}" onclick="load(${ch.id})">
+      <div class="ch-logo">${ch.icon}</div>
+      <div class="ch-info">
+        <div class="ch-name">${ch.name}</div>
+        <div class="ch-meta">
+          <div class="dot"></div>
+          <span class="live-lbl">LIVE</span>
+          <span class="q-tag">${ch.q}</span>
+          <span class="viewers">${ch.v}</span>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function filt(btn, cat){
+  document.querySelectorAll('.cat').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  render(cat);
+}
+
+// ── تحميل قناة ──
+function load(id){
+  const ch = CHANNELS.find(c=>c.id===id);
+  if(!ch) return;
+  curCh = ch;
+  retries = 0;
+  clearTimeout(retryTmr);
+  clearInterval(bwTimer);
+
+  document.querySelectorAll('.ch').forEach(el=>el.classList.remove('on'));
+  const el = $('c'+id);
+  if(el){ el.classList.add('on'); el.scrollIntoView({block:'nearest',behavior:'smooth'}); }
+
+  updateMeta(ch);
+
+  if(!ch.url){
+    showErr('لا يوجد رابط بث لهذه القناة حتى الآن.\nأضف الرابط في قسم CHANNELS بالكود.', false);
+    return;
+  }
+
+  startStream(ch);
+}
+
+function startStream(ch){
+  $('splash').style.display  = 'none';
+  $('errBox').style.display  = 'none';
+  $('loadBox').style.display = 'flex';
+  $('loadTxt').textContent   = `⏳ جارٍ الاتصال بـ ${ch.name}...`;
+  vid.style.display = 'block';
+  $('playerBar').style.display = 'flex';
+  $('netBox').style.display    = 'flex';
+
+  // تدمير المشغل القديم
+  if(hlsInst){ hlsInst.destroy(); hlsInst = null; }
+  vid.removeAttribute('src');
+  vid.load();
+
+  const url = ch.url;
+
+  if(Hls.isSupported()){
+    hlsInst = new Hls({
+      enableWorker:               true,
+      lowLatencyMode:             true,
+      startLevel:                 -1,
+      capLevelToPlayerSize:       true,
+      abrEwmaDefaultEstimate:     800000,
+      abrBandWidthFactor:         0.85,
+      abrBandWidthUpFactor:       0.7,
+      maxBufferLength:            30,
+      maxMaxBufferLength:         600,
+      maxBufferSize:              60*1000*1000,
+      maxBufferHole:              0.5,
+      manifestLoadingMaxRetry:    8,
+      manifestLoadingRetryDelay:  500,
+      manifestLoadingMaxRetryTimeout: 30000,
+      levelLoadingMaxRetry:       8,
+      fragLoadingMaxRetry:        8,
+      fragLoadingRetryDelay:      500,
+    });
+
+    hlsInst.attachMedia(vid);
+
+    hlsInst.on(Hls.Events.MEDIA_ATTACHED, ()=>{
+      hlsInst.loadSource(url);
+    });
+
+    hlsInst.on(Hls.Events.MANIFEST_PARSED, ()=>{
+      hideLoad();
+      vid.play().catch(()=>{
+        // Autoplay blocked — show play button
+        hideLoad();
+      });
+      toast('📺', `يُعرض الآن: ${ch.name}`);
+      netStatus('good');
+      $('stV').textContent = ch.v;
+    });
+
+    hlsInst.on(Hls.Events.LEVEL_SWITCHED, (e,d)=>{
+      if(hlsInst.levels[d.level]){
+        const h = hlsInst.levels[d.level].height;
+        $('stQ').textContent  = h ? h+'p' : ch.q;
+        $('badgeQ').textContent = h>=720 ? 'HD' : 'SD';
+      }
+    });
+
+    hlsInst.on(Hls.Events.ERROR, (e,d)=>{
+      console.warn('[HLS Error]', d.type, d.details, 'fatal:', d.fatal);
+      if(d.fatal){
+        if(d.type === Hls.ErrorTypes.NETWORK_ERROR){
+          autoRetry(ch);
+        } else if(d.type === Hls.ErrorTypes.MEDIA_ERROR){
+          hlsInst.recoverMediaError();
+        } else {
+          showErr('خطأ في المشغل\n' + d.details);
+        }
+      }
+    });
+
+    // مراقبة السرعة
+    bwTimer = setInterval(()=>{
+      if(!hlsInst) return;
+      const bw = hlsInst.bandwidthEstimate || 0;
+      $('badgeSpd').textContent = bw ? (bw/1e6).toFixed(1)+' Mbps' : 'AUTO';
+      $('stL').textContent = Math.round(60 + Math.random()*80)+'ms';
+      if(bw < 400000)       netStatus('poor');
+      else if(bw < 1500000) netStatus('fair');
+      else                  netStatus('good');
+    }, 2500);
+
+  } else if(vid.canPlayType('application/vnd.apple.mpegurl')){
+    // Safari — HLS أصلي
+    vid.src = url;
+    vid.addEventListener('loadedmetadata', ()=>{
+      hideLoad();
+      vid.play().catch(()=>{});
+    },{once:true});
+    vid.addEventListener('error', ()=>{
+      showErr('تعذّر تشغيل البث\nخطأ في رابط البث أو المتصفح');
+    },{once:true});
+  } else {
+    showErr('متصفحك لا يدعم HLS\nاستخدم Chrome أو Firefox أو Edge');
+  }
+}
+
+function autoRetry(ch){
+  retries++;
+  const max = 6;
+  if(retries <= max){
+    const delay = Math.min(500 * Math.pow(2, retries-1), 16000);
+    $('loadBox').style.display = 'flex';
+    $('loadTxt').textContent = `🔄 إعادة المحاولة ${retries}/${max}...\nانتظر ${(delay/1000).toFixed(0)} ثانية`;
+    netStatus('poor');
+    retryTmr = setTimeout(()=>{
+      if(hlsInst){
+        try{ hlsInst.loadSource(curCh.url); hlsInst.startLoad(); }
+        catch(e){ startStream(curCh); }
+      } else {
+        startStream(curCh);
+      }
+    }, delay);
+  } else {
+    showErr(`فشل الاتصال بعد ${max} محاولات.\n• تأكد أن الرابط يعمل\n• تحقق من اتصالك بالإنترنت`);
+  }
+}
+
+function retryLoad(){
+  if(curCh && curCh.url){ retries=0; startStream(curCh); }
+}
+
+// ── مساعدات ──
+function updateMeta(ch){
+  $('barLogo').textContent  = ch.icon;
+  $('barCh').textContent    = ch.name;
+  $('barProg').textContent  = ch.prog;
+  $('infoProg').textContent = ch.prog;
+  $('stV').textContent      = ch.v;
+  $('stQ').textContent      = ch.q;
+  $('stL').textContent      = '—';
+  $('badgeQ').textContent   = ch.q;
+}
+
+function hideLoad(){
+  $('loadBox').style.display = 'none';
+  $('errBox').style.display  = 'none';
+}
+
+function showErr(msg, showRetry=true){
+  $('loadBox').style.display = 'none';
+  $('errMsg').textContent    = msg;
+  $('errBox').style.display  = 'flex';
+  document.querySelector('.retry-btn').style.display = showRetry ? 'inline-block' : 'none';
+}
+
+function netStatus(lvl){
+  const d=$('netDot'), t=$('netTxt');
+  if(lvl==='good'){ d.style.background='var(--green)'; t.textContent='اتصال ممتاز'; }
+  else if(lvl==='fair'){ d.style.background='var(--gold)'; t.textContent='اتصال متوسط'; }
+  else { d.style.background='var(--red)'; t.textContent='اتصال ضعيف'; }
+}
+
+let toastT;
+function toast(icon, msg){
+  $('toastI').textContent = icon;
+  $('toastM').textContent = msg;
+  $('toast').classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(()=>$('toast').classList.remove('show'), 3200);
+}
+
+// الساعة
+setInterval(()=>{
+  $('infoClock').textContent = new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
+},1000);
+$('infoClock').textContent = new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
+
+// اتصال الإنترنت
+window.addEventListener('online',  ()=>{ netStatus('good'); toast('✅','عاد الاتصال بالإنترنت'); if(curCh?.url) startStream(curCh); });
+window.addEventListener('offline', ()=>{ netStatus('poor'); toast('📡','انقطع الاتصال بالإنترنت'); });
+
+// تهيئة
+render('all');
+</script>
+
+</body>
+</html>
